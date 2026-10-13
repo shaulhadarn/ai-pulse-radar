@@ -4,7 +4,8 @@ A web app that scans X, Hacker News, Reddit and GitHub for what people are actua
 
 ## What it does
 
-- **Pulls four sources in parallel.** Hacker News (Algolia API), Reddit (top of the day across AI subreddits), GitHub (new repos by topic, sorted by stars) and X (API v2 recent search, when you add a token). One failing source never blocks the others, and the sidebar shows the health of each.
+- **Pulls four sources in parallel.** Hacker News (Algolia API), Reddit (top of the day across AI subreddits), GitHub (new repos by topic, sorted by stars) and X (API v2 recent search with a token, or public profiles of AI builders without one). One failing source never blocks the others, and the sidebar shows the health of each.
+- **Works with no API keys, thanks to [Jina Reader](https://jina.ai/reader).** When a source blocks the server (Reddit blocks most cloud hosts) the request is retried through `r.jina.ai`, and without an X token the X profiles in `X_ACCOUNTS` are read through Jina. Sources fetched this way get a "Jina" badge. Set `JINA_MODE` to `always` or `off` to change this.
 - **Ranks signals 0 to 100.** Engagement is log-scaled and normalised per source, so 80 stars on a new repo can compete with 800 points on HN. Freshness halves every 24 hours, and items that name specific techniques get a small boost.
 - **Tags techniques.** A regex taxonomy in `src/lib/radar/taxonomy.ts` tags each item, and the "Technique momentum" panel sums rank per technique so you see where the energy is.
 - **Dedupes cross-posts** by canonical URL, keeping the best-ranked copy.
@@ -23,7 +24,10 @@ Open http://localhost:3000.
 
 | Variable | Needed for |
 | --- | --- |
-| `X_BEARER_TOKEN` | Turns on the X source. Recent search needs a paid X API tier. |
+| `JINA_MODE` | `fallback` (default), `always` or `off`. Controls when Jina Reader is used. |
+| `JINA_API_KEY` | Optional. Raises Jina's keyless limit of about 20 requests a minute. |
+| `X_BEARER_TOKEN` | Uses the X API for search. Recent search needs a paid X API tier. Without it, X comes through Jina. |
+| `X_ACCOUNTS` | Comma-separated X profiles to read through Jina when there is no token. |
 | `X_QUERY` | Custom X search, for example a list of accounts to follow. |
 | `GITHUB_TOKEN` | Higher GitHub search rate limit. |
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | Reddit OAuth, for hosts where anonymous requests are blocked. |
@@ -49,6 +53,7 @@ src/
   components/             radar-dashboard.tsx (client-side filters and cards)
   lib/radar/
     sources/              one adapter per platform, each validated with zod
+    jina.ts               Jina Reader client and the JINA_MODE switch
     taxonomy.ts           technique definitions and matching
     rank.ts               ranking, dedupe and trend aggregation
     snapshot.ts           runs all adapters and builds a snapshot

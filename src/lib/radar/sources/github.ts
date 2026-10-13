@@ -42,7 +42,7 @@ export const githubSource: SourceAdapter = {
   label: "GitHub",
   isEnabled: () => true,
   setupHint: "Set GITHUB_TOKEN to raise the API rate limit.",
-  async fetchItems() {
+  async fetchItems(ctx) {
     const since = hoursAgo(LOOKBACK_DAYS * 24).toISOString().slice(0, 10);
     const headers: Record<string, string> = { "X-GitHub-Api-Version": "2022-11-28" };
     if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
@@ -51,7 +51,7 @@ export const githubSource: SourceAdapter = {
       GITHUB_TOPICS.map((topic) => {
         const q = `topic:${topic} created:>${since} stars:>${MIN_STARS}`;
         const params = new URLSearchParams({ q, sort: "stars", order: "desc", per_page: "30" });
-        return fetchJson(`https://api.github.com/search/repositories?${params}`, { schema: githubSearchSchema, headers });
+        return fetchJson(`https://api.github.com/search/repositories?${params}`, { schema: githubSearchSchema, headers, jina: true, ctx });
       }),
     );
     const ok = results.filter((r) => r.status === "fulfilled");
