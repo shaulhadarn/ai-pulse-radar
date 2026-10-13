@@ -205,7 +205,7 @@ function SignalCard({ item, now, onTechnique }: { item: RadarItem; now: number; 
           </a>
           {item.summary && <p className="mt-1 line-clamp-2 text-sm text-muted">{item.summary}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-            <span>{engagementLabel(item)}</span>
+            {engagementLabel(item) && <span>{engagementLabel(item)}</span>}
             {item.channel && <span>{item.channel}</span>}
             {item.author && <span>{item.author}</span>}
             <span>{age(item.publishedAt, now)}</span>
@@ -235,8 +235,10 @@ function SignalCard({ item, now, onTechnique }: { item: RadarItem; now: number; 
   );
 }
 
-function engagementLabel(item: RadarItem): string {
+function engagementLabel(item: RadarItem): string | null {
   const { score, comments } = item.engagement;
+  // Sources read without counts (X through Jina, the Reddit archive) have nothing to show.
+  if (score === 0 && !comments) return null;
   switch (item.source) {
     case "github":
       return `★ ${score.toLocaleString("en-US")} · ${comments ?? 0} forks`;

@@ -5,7 +5,7 @@ A web app that scans X, Hacker News, Reddit and GitHub for what people are actua
 ## What it does
 
 - **Pulls four sources in parallel.** Hacker News (Algolia API), Reddit (top of the day across AI subreddits), GitHub (new repos by topic, sorted by stars) and X (API v2 recent search with a token, or public profiles of AI builders without one). One failing source never blocks the others, and the sidebar shows the health of each.
-- **Works with no API keys, thanks to [Jina Reader](https://jina.ai/reader).** When a source blocks the server (Reddit blocks most cloud hosts) the request is retried through `r.jina.ai`, and without an X token the X profiles in `X_ACCOUNTS` are read through Jina. Sources fetched this way get a "Jina" badge. Set `JINA_MODE` to `always` or `off` to change this.
+- **Works with no API keys, thanks to [Jina Reader](https://jina.ai/reader).** When a source blocks the server the request is retried through `r.jina.ai`, and without an X token the X profiles in `X_ACCOUNTS` are read through Jina. Sources fetched this way get a "Jina" badge. Set `JINA_MODE` to `always` or `off` to change this. Reddit blocks Jina too, so without Reddit keys its posts come from the [Arctic Shift](https://arctic-shift.photon-reddit.com) archive (the ten liveliest posts of the day per subreddit, without vote counts).
 - **Ranks signals 0 to 100.** Engagement is log-scaled and normalised per source, so 80 stars on a new repo can compete with 800 points on HN. Freshness halves every 24 hours, and items that name specific techniques get a small boost.
 - **Tags techniques.** A regex taxonomy in `src/lib/radar/taxonomy.ts` tags each item, and the "Technique momentum" panel sums rank per technique so you see where the energy is.
 - **Dedupes cross-posts** by canonical URL, keeping the best-ranked copy.
@@ -30,7 +30,7 @@ Open http://localhost:3000.
 | `X_ACCOUNTS` | Comma-separated X profiles to read through Jina when there is no token. |
 | `X_QUERY` | Custom X search, for example a list of accounts to follow. |
 | `GITHUB_TOKEN` | Higher GitHub search rate limit. |
-| `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | Reddit OAuth, for hosts where anonymous requests are blocked. |
+| `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | Reddit OAuth, for live vote counts instead of the archive fallback. |
 | `REDDIT_SUBREDDITS` | Comma-separated subreddits to scan. |
 
 ## Scripts

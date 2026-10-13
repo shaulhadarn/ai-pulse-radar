@@ -74,12 +74,18 @@ async function getAppToken(): Promise<string | undefined> {
   return access_token;
 }
 
-const arcticSchema = z.object({ data: z.array(postSchema.shape.data) });
+const arcticSchema = z.object({
+  data: z.array(postSchema.shape.data.extend({ removed_by_category: z.string().nullish() })),
+});
+
+/** Posts kept per subreddit from the archive, so busy subreddits don't flood the radar. */
+const ARCHIVE_PER_SUBREDDIT = 10;
 
 /**
  * Arctic Shift (https://arctic-shift.photon-reddit.com) archives Reddit posts and
- * serves them without a key. Its scores are captured soon after posting, so they
- * run low, but ranking compares Reddit items with each other.
+ * serves them without a key. It records votes minutes after posting, so they are
+ * only used to pick each subreddit's liveliest posts, then dropped so ranking
+ * treats Reddit's engagement as unknown rather than near zero.
  */
 async function fetchFromArcticShift(now = Date.now()): Promise<RawItem[]> {
   const after = Math.floor(now / 1000) - 24 * 3600;
@@ -91,7 +97,13 @@ async function fetchFromArcticShift(now = Date.now()): Promise<RawItem[]> {
       }),
     ),
   );
-  return lists.flatMap((list) => parseReddit({ data: { children: list.data.map((data) => ({ data })) } }));
+  return lists.flatMap((list) => {
+    const live = list.data
+      .filter((post) => !post.removed_by_category && !/^\[ ?(removed|deleted)/i.test(post.title) && post.selftext !== "[removed]")
+      .toSorted((a, b) => b.score + 2 * b.num_comments - (a.score + 2 * a.num_comments))
+      .slice(0, ARCHIVE_PER_SUBREDDIT);
+    return parseReddit({ data: { children: live.map((data) => ({ data })) } }).map((item) => ({ ...item, engagement: { score: 0 } }));
+  });
 }
 
 export const redditSource: SourceAdapter = {

@@ -124,13 +124,14 @@ describe("Reddit fallback", () => {
       created_utc: 1_791_800_000,
     };
     const fetchMock = mockFetch((url) => {
-      if (url.startsWith("https://arctic-shift.photon-reddit.com/")) return Response.json({ data: [post] });
+      if (url.startsWith("https://arctic-shift.photon-reddit.com/"))
+        return Response.json({ data: [post, { ...post, id: "gone", title: "[ Removed by moderator ]", removed_by_category: "moderator" }] });
       if (url.startsWith("https://r.jina.ai/")) return new Response("You've been blocked by network security.");
       return new Response("blocked", { status: 403 });
     });
     vi.stubEnv("REDDIT_SUBREDDITS", "LocalLLaMA");
     const items = await redditSource.fetchItems({ usedJina: vi.fn() });
-    expect(items).toMatchObject([{ id: "reddit:abc", channel: "r/LocalLLaMA", engagement: { score: 12, comments: 3 } }]);
+    expect(items).toMatchObject([{ id: "reddit:abc", channel: "r/LocalLLaMA", engagement: { score: 0 } }]);
     expect(fetchMock.mock.calls.at(-1)?.[0]).toContain("subreddit=LocalLLaMA");
   });
 });
