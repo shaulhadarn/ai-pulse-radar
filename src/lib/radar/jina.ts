@@ -53,6 +53,9 @@ export async function readWithJina(url: string, { format = "text", timeoutMs = 2
 export function extractJson(text: string): unknown {
   const start = text.search(/[{[]/);
   const end = Math.max(text.lastIndexOf("}"), text.lastIndexOf("]"));
-  if (start === -1 || end < start) throw new JinaError("Jina Reader returned no JSON");
+  if (start === -1 || end < start) {
+    const snippet = text.replace(/\s+/g, " ").trim().slice(0, 160);
+    throw new JinaError(`Jina Reader returned no JSON${snippet ? `: ${snippet}` : ""}`);
+  }
   return JSON.parse(text.slice(start, end + 1));
 }

@@ -86,4 +86,12 @@ export type TechniqueId =
   | "frontier-models"
   | "multimodal"
   | "evals"
-  | "safety";
+  | "safety"
+  | "agent-loops"
+  | "goal-agents"
+  | "steering"
+  | "orchestration"
+  | "agent-skills"
+  | "memory"
+  | "computer-use"
+  | "spec-driven";

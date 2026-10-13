@@ -74,22 +74,58 @@ async function getAppToken(): Promise<string | undefined> {
   return access_token;
 }
 
+const arcticSchema = z.object({
+  data: z.array(postSchema.shape.data.extend({ removed_by_category: z.string().nullish() })),
+});
+
+/** Posts kept per subreddit from the archive, so busy subreddits don't flood the radar. */
+const ARCHIVE_PER_SUBREDDIT = 10;
+
+/**
+ * Arctic Shift (https://arctic-shift.photon-reddit.com) archives Reddit posts and
+ * serves them without a key. It records votes minutes after posting, so they are
+ * only used to pick each subreddit's liveliest posts, then dropped so ranking
+ * treats Reddit's engagement as unknown rather than near zero.
+ */
+async function fetchFromArcticShift(now = Date.now()): Promise<RawItem[]> {
+  const after = Math.floor(now / 1000) - 24 * 3600;
+  const lists = await Promise.all(
+    subreddits().map((sub) =>
+      fetchJson(`https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=${encodeURIComponent(sub)}&after=${after}&limit=100&sort=desc`, {
+        schema: arcticSchema,
+        timeoutMs: 15_000,
+      }),
+    ),
+  );
+  return lists.flatMap((list) => {
+    const live = list.data
+      .filter((post) => !post.removed_by_category && !/^\[ ?(removed|deleted)/i.test(post.title) && post.selftext !== "[removed]")
+      .toSorted((a, b) => b.score + 2 * b.num_comments - (a.score + 2 * a.num_comments))
+      .slice(0, ARCHIVE_PER_SUBREDDIT);
+    return parseReddit({ data: { children: live.map((data) => ({ data })) } }).map((item) => ({ ...item, engagement: { score: 0 } }));
+  });
+}
+
 export const redditSource: SourceAdapter = {
   id: "reddit",
   label: "Reddit",
   isEnabled: () => true,
-  setupHint: "Reddit blocks many cloud hosts. Jina Reader is used as a fallback, or set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET.",
+  setupHint: "Reddit blocks cloud hosts and Jina, so posts come from the Arctic Shift archive. Set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET for live scores.",
   async fetchItems(ctx) {
     const token = await getAppToken();
-    const base = token ? "https://oauth.reddit.com" : "https://www.reddit.com";
     const path = `/r/${subreddits().join("+")}/top${token ? "" : ".json"}?t=day&limit=100&raw_json=1`;
-    const listing = await fetchJson(base + path, {
-      schema: redditListingSchema,
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      // The public JSON endpoint is what Jina can read; OAuth requests need their header.
-      jina: !token,
-      ctx,
-    });
-    return parseReddit(listing);
+    if (token) {
+      return parseReddit(await fetchJson(`https://oauth.reddit.com${path}`, { schema: redditListingSchema, headers: { Authorization: `Bearer ${token}` } }));
+    }
+    try {
+      return parseReddit(await fetchJson(`https://www.reddit.com${path}`, { schema: redditListingSchema, jina: true, ctx }));
+    } catch (err) {
+      // Reddit blocks Vercel and Jina's servers alike, so fall back to an archive of public posts.
+      try {
+        return await fetchFromArcticShift();
+      } catch (archiveErr) {
+        throw new Error(`${(err as Error).message}; Arctic Shift failed: ${(archiveErr as Error).message}`);
+      }
+    }
   },
 };

@@ -96,6 +96,54 @@ export const TECHNIQUES: Technique[] = [
     description: "Alignment, interpretability, jailbreaks, prompt injection",
     patterns: [/\balignment\b/i, /\binterpretability\b/i, /\bjailbreak/i, /\bprompt injection\b/i, /\bred[- ]team/i, /\bAI safety\b/i, /\bsparse autoencoders?\b/i],
   },
+  {
+    id: "agent-loops",
+    label: "Agent loops",
+    description: "Agents that run in a loop until done: Ralph loops, self-correcting and long-running harnesses",
+    patterns: [/\b(agent|agentic|ralph|autonomous|feedback|self[- ]improving|eval|while|inner|outer) loops?\b/i, /\bloop until\b/i, /\blong[- ]running agents?\b/i, /\bagent harness(es)?\b/i, /\bself[- ](correct|verif|critique|refin)\w*/i],
+  },
+  {
+    id: "goal-agents",
+    label: "Goals & long-horizon tasks",
+    description: "Giving agents goals, outcomes and success criteria instead of step-by-step prompts",
+    patterns: [/\bgoal[- ](driven|directed|oriented|setting|based)\b/i, /\b(agent|task)s? goals?\b/i, /\blong[- ]horizon\b/i, /\boutcomes?[- ](based|driven)\b/i, /\bsuccess criteria\b/i, /\brubrics?\b/i, /\/goal\b/i],
+  },
+  {
+    id: "steering",
+    label: "Steering & control",
+    description: "Steering vectors, activation steering, representation engineering and other ways to control model behaviour",
+    patterns: [/\bsteer(ing|able)?\b/i, /\bactivation (steering|patching|engineering)\b/i, /\bcontrol vectors?\b/i, /\brepresentation engineering\b/i, /\bfeature steering\b/i, /\bpersona vectors?\b/i],
+  },
+  {
+    id: "orchestration",
+    label: "Sub-agents & orchestration",
+    description: "Orchestrator and worker agents, sub-agents, swarms and agent workflows",
+    patterns: [/\bsub-?agents?\b/i, /\borchestrat(or|ion|e)\b/i, /\bswarms?\b/i, /\bagent (teams?|workflows?|mesh|graph)\b/i, /\bLangGraph\b/i, /\bCrewAI\b/i, /\bparallel agents\b/i],
+  },
+  {
+    id: "agent-skills",
+    label: "Skills & plugins",
+    description: "Packaged agent skills, SKILL.md files, plugins, slash commands and hooks",
+    patterns: [/\bagent skills?\b/i, /\bSKILL\.md\b/i, /\bclaude skills?\b/i, /\bskills? (marketplace|library|pack)\b/i, /\bplugins?\b/i, /\bslash commands?\b/i, /\bhooks\b/i],
+  },
+  {
+    id: "memory",
+    label: "Agent memory",
+    description: "Persistent memory, knowledge graphs and state that survive across sessions",
+    patterns: [/\b(agent|persistent|long[- ]term|shared) memory\b/i, /\bmemory (layer|store|bank|system)s?\b/i, /\bknowledge graphs?\b/i, /\bmem0\b/i, /\bCLAUDE\.md\b/i, /\bAGENTS\.md\b/i],
+  },
+  {
+    id: "computer-use",
+    label: "Computer & browser use",
+    description: "Agents that operate screens, browsers and phones",
+    patterns: [/\bcomputer[- ]use\b/i, /\bbrowser[- ](use|agents?|automation)\b/i, /\bplaywright\b/i, /\bGUI agents?\b/i, /\bphone agents?\b/i, /\boperator\b/i],
+  },
+  {
+    id: "spec-driven",
+    label: "Spec-driven development",
+    description: "Writing specs, plans and tests first so agents can build against them",
+    patterns: [/\bspec[- ](driven|first)\b/i, /\bspecs? (kit|files?)\b/i, /\bplan mode\b/i, /\bTDD\b/, /\btest[- ]driven\b/i, /\bPRD\b/],
+  },
 ];
 
 const TECHNIQUE_LABELS = new Map(TECHNIQUES.map((t) => [t.id, t.label]));
