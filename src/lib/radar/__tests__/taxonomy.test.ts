@@ -27,3 +27,13 @@ describe("isAiRelated", () => {
     expect(isAiRelated("The history of the Boeing 747")).toBe(false);
   });
 });
+
+describe("builder techniques", () => {
+  it("spots loops, goals, steering and orchestration", () => {
+    expect(classify("I ran a Ralph loop overnight and it shipped the app")).toContain("agent-loops");
+    expect(classify("Give agents goals and success criteria, not steps")).toContain("goal-agents");
+    expect(classify("Activation steering with persona vectors")).toContain("steering");
+    expect(classify("An orchestrator that spawns sub-agents in parallel")).toContain("orchestration");
+    expect(classify("Packaging workflows as Agent Skills with SKILL.md")).toContain("agent-skills");
+  });
+});

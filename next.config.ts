@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
       revalidate: 900,
       expire: 86_400,
     },
+    // The AI briefing costs a model call, so refresh it at most hourly.
+    briefing: {
+      stale: 900,
+      revalidate: 3600,
+      expire: 86_400,
+    },
   },
   turbopack: {
     rules: {

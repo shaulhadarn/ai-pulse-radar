@@ -8,6 +8,7 @@ A web app that scans X, Hacker News, Reddit and GitHub for what people are actua
 - **Works with no API keys, thanks to [Jina Reader](https://jina.ai/reader).** When a source blocks the server the request is retried through `r.jina.ai`, and without an X token the X profiles in `X_ACCOUNTS` are read through Jina. Sources fetched this way get a "Jina" badge. Set `JINA_MODE` to `always` or `off` to change this. Reddit blocks Jina too, so without Reddit keys its posts come from the [Arctic Shift](https://arctic-shift.photon-reddit.com) archive (the ten liveliest posts of the day per subreddit, without vote counts).
 - **Ranks signals 0 to 100.** Engagement is log-scaled and normalised per source, so 80 stars on a new repo can compete with 800 points on HN. Freshness halves every 24 hours, and items that name specific techniques get a small boost.
 - **Tags techniques.** A regex taxonomy in `src/lib/radar/taxonomy.ts` tags each item, and the "Technique momentum" panel sums rank per technique so you see where the energy is.
+- **Insights page** at `/insights` synthesises the scan: which techniques are hot, rising or emerging (agent loops, goal-driven agents, steering, sub-agents, skills, MCP and more), what each one is, how to apply it, the posts behind it, and which tools and models are mentioned most. With `ANTHROPIC_API_KEY` set, Claude also writes a daily briefing on top.
 - **Dedupes cross-posts** by canonical URL, keeping the best-ranked copy.
 - **Caches for 15 minutes** with Next.js Cache Components (`"use cache"` with a custom `radar` profile), with a Rescan button that invalidates the cache on demand.
 - **JSON feed** at `/api/radar` for scripts, digests or other apps.
@@ -32,6 +33,7 @@ Open http://localhost:3000.
 | `GITHUB_TOKEN` | Higher GitHub search rate limit. |
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | Reddit OAuth, for live vote counts instead of the archive fallback. |
 | `REDDIT_SUBREDDITS` | Comma-separated subreddits to scan. |
+| `ANTHROPIC_API_KEY` | Optional. Adds a Claude-written briefing to the Insights page, refreshed at most hourly. |
 
 ## Scripts
 
