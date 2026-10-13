@@ -1,5 +1,6 @@
 import { age, SOURCE_STYLE } from "@/lib/radar/format";
 import type { Momentum } from "@/lib/radar/insights";
+import type { Verdict } from "@/lib/radar/outlook";
 import type { RadarItem } from "@/lib/radar/types";
 
 const MOMENTUM_STYLE: Record<Momentum, { label: string; className: string }> = {
@@ -98,4 +99,15 @@ export function RadarGlyph({ className = "" }: { className?: string }) {
       ))}
     </svg>
   );
+}
+
+const VERDICT_STYLE: Record<Verdict, { label: string; className: string }> = {
+  adopt: { label: "Adopt now", className: "bg-accent text-background" },
+  try: { label: "Try this week", className: "bg-rising/15 text-rising ring-1 ring-rising/30" },
+  watch: { label: "Watch", className: "bg-surface-2 text-muted ring-1 ring-border" },
+};
+
+export function VerdictBadge({ verdict }: { verdict: Verdict }) {
+  const style = VERDICT_STYLE[verdict];
+  return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${style.className}`}>{style.label}</span>;
 }

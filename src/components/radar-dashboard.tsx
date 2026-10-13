@@ -1,15 +1,19 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { refreshRadar } from "@/app/actions";
+import { MomentumBadge } from "@/components/insight-ui";
 import { age, SOURCE_STYLE } from "@/lib/radar/format";
+import type { Outlook } from "@/lib/radar/outlook";
 import { techniqueLabel } from "@/lib/radar/taxonomy";
 import type { RadarItem, RadarSnapshot, SourceId, TechniqueId } from "@/lib/radar/types";
 
-type SortKey = "rank" | "newest" | "engagement";
+type SortKey = "rank" | "breakout" | "newest" | "engagement";
 
-export function RadarDashboard({ snapshot }: { snapshot: RadarSnapshot }) {
+export function RadarDashboard({ snapshot, meta = {} }: { snapshot: RadarSnapshot; meta?: Outlook["meta"] }) {
   const [sources, setSources] = useState<Set<SourceId>>(new Set());
+  const [nextWaveOnly, setNextWaveOnly] = useState(false);
   const [technique, setTechnique] = useState<TechniqueId | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("rank");
@@ -23,12 +27,14 @@ export function RadarDashboard({ snapshot }: { snapshot: RadarSnapshot }) {
       (item) =>
         (sources.size === 0 || sources.has(item.source)) &&
         (!technique || item.techniques.includes(technique)) &&
+        (!nextWaveOnly || item.techniques.some((t) => meta[t]?.nextWave)) &&
         (!q || `${item.title} ${item.summary ?? ""} ${item.author ?? ""} ${item.channel ?? ""}`.toLowerCase().includes(q)),
     );
+    if (sort === "breakout") return filtered.toSorted((a, b) => breakoutRank(b, meta) - breakoutRank(a, meta));
     if (sort === "newest") return filtered.toSorted((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
     if (sort === "engagement") return filtered.toSorted((a, b) => b.engagement.score - a.engagement.score);
     return filtered;
-  }, [snapshot.items, sources, technique, query, sort]);
+  }, [snapshot.items, sources, technique, query, sort, nextWaveOnly, meta]);
 
   const maxHeat = snapshot.trends[0]?.heat ?? 1;
   const liveSources = snapshot.sources.filter((s) => s.ok).length;
@@ -97,7 +103,13 @@ export function RadarDashboard({ snapshot }: { snapshot: RadarSnapshot }) {
 
           <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
             <h2 className="mb-1 text-sm font-semibold">Technique momentum</h2>
-            <p className="mb-4 text-xs text-muted">Heat sums the rank of every item using a technique. Click to filter.</p>
+            <p className="mb-4 text-xs text-muted">
+              Heat sums the rank of every item using a technique. Click to filter, or{" "}
+              <Link href="/insights" className="underline underline-offset-2 hover:text-foreground">
+                open the analysis
+              </Link>
+              .
+            </p>
             {snapshot.trends.length === 0 ? (
               <p className="text-sm text-muted">No signals yet.</p>
             ) : (
@@ -112,10 +124,18 @@ export function RadarDashboard({ snapshot }: { snapshot: RadarSnapshot }) {
                         aria-pressed={active}
                         className={`w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface-2 ${active ? "bg-surface-2 ring-1 ring-accent" : ""}`}
                       >
-                        <div className="flex items-baseline justify-between gap-2 text-sm">
-                          <span className="truncate">{trend.label}</span>
-                          <span className="shrink-0 font-mono text-xs text-muted">
-                            {trend.mentions} · {trend.sources.length} src
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className="truncate">{trend.label}</span>
+                            {meta[trend.technique]?.nextWave && (
+                              <span className="shrink-0 text-[10px] font-semibold text-accent" title="Next wave: accelerating and not yet mainstream">
+                                ▲ next
+                              </span>
+                            )}
+                          </span>
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            {meta[trend.technique] && meta[trend.technique]?.momentum !== "steady" && <MomentumBadge momentum={meta[trend.technique]!.momentum} />}
+                            <span className="font-mono text-xs text-muted">{trend.mentions}</span>
                           </span>
                         </div>
                         <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
@@ -156,6 +176,15 @@ export function RadarDashboard({ snapshot }: { snapshot: RadarSnapshot }) {
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setNextWaveOnly((v) => !v)}
+              aria-pressed={nextWaveOnly}
+              className={`rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition-colors ${nextWaveOnly ? "border-accent bg-accent text-background" : "border-border bg-surface text-accent hover:bg-surface-2"}`}
+              title="Only signals about the upcoming technologies"
+            >
+              ▲ Next wave
+            </button>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
@@ -163,20 +192,23 @@ export function RadarDashboard({ snapshot }: { snapshot: RadarSnapshot }) {
               className="rounded-xl border border-border bg-surface px-2 py-1.5 text-sm shadow-sm"
             >
               <option value="rank">Top ranked</option>
+              <option value="breakout">Breakout first</option>
               <option value="newest">Newest</option>
               <option value="engagement">Most engagement</option>
             </select>
           </div>
 
-          {(technique || sources.size > 0 || query) && (
+          {(technique || sources.size > 0 || query || nextWaveOnly) && (
             <p className="text-sm text-muted">
               {visible.length} of {snapshot.items.length} signals
-              {technique && <> · {techniqueLabel(technique)}</>}{" "}
+              {technique && <> · {techniqueLabel(technique)}</>}
+              {nextWaveOnly && <> · next wave</>}{" "}
               <button
                 type="button"
                 className="underline underline-offset-2 hover:text-foreground"
                 onClick={() => {
                   setTechnique(null);
+                  setNextWaveOnly(false);
                   setSources(new Set());
                   setQuery("");
                 }}
@@ -193,7 +225,7 @@ export function RadarDashboard({ snapshot }: { snapshot: RadarSnapshot }) {
           ) : (
             <ol className="flex flex-col gap-3">
               {visible.map((item) => (
-                <SignalCard key={item.id} item={item} now={now} onTechnique={setTechnique} />
+                <SignalCard key={item.id} item={item} now={now} meta={meta} onTechnique={setTechnique} />
               ))}
             </ol>
           )}
@@ -212,7 +244,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SignalCard({ item, now, onTechnique }: { item: RadarItem; now: number; onTechnique: (t: TechniqueId) => void }) {
+function SignalCard({ item, now, meta, onTechnique }: { item: RadarItem; now: number; meta: Outlook["meta"]; onTechnique: (t: TechniqueId) => void }) {
   const style = SOURCE_STYLE[item.source];
   const engagement = engagementLabel(item);
   return (
@@ -240,22 +272,33 @@ function SignalCard({ item, now, onTechnique }: { item: RadarItem; now: number; 
           </div>
           {item.techniques.length > 0 && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {item.techniques.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => onTechnique(t)}
-                  className="rounded-full border border-border bg-surface-2 px-2 py-0.5 text-[11px] transition-colors hover:border-accent hover:text-accent"
-                >
-                  {techniqueLabel(t)}
-                </button>
-              ))}
+              {item.techniques.map((t) => {
+                const next = meta[t]?.nextWave;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => onTechnique(t)}
+                    title={next ? "Next wave: accelerating and not yet mainstream" : undefined}
+                    className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors hover:border-accent hover:text-accent ${next ? "border-accent/40 bg-accent/10 font-medium text-accent" : "border-border bg-surface-2"}`}
+                  >
+                    {next && "▲ "}
+                    {techniqueLabel(t)}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
     </li>
   );
+}
+
+/** Rank boosted by the strongest breakout score among the item's techniques, so next-wave posts rise. */
+function breakoutRank(item: RadarItem, meta: Outlook["meta"]): number {
+  const best = Math.max(0, ...item.techniques.map((t) => meta[t]?.breakout ?? 0));
+  return item.rank * (1 + best / 100);
 }
 
 function engagementLabel(item: RadarItem): string | null {
