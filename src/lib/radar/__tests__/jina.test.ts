@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { fetchJson } from "../http";
 import { extractJson, jinaMode } from "../jina";
+import { redditSource } from "../sources/reddit";
 import { parseXProfileMarkdown, snowflakeToDate } from "../sources/x";
 
 const schema = z.object({ ok: z.boolean() });
@@ -35,9 +36,7 @@ describe("extractJson", () => {
 
 describe("fetchJson with Jina", () => {
   it("retries through Jina when the source blocks us", async () => {
-    const fetchMock = mockFetch((url) =>
-      url.startsWith("https://r.jina.ai/") ? new Response('{"ok":true}') : new Response("blocked", { status: 403 }),
-    );
+    const fetchMock = mockFetch((url) => (url.startsWith("https://r.jina.ai/") ? new Response('{"ok":true}') : new Response("blocked", { status: 403 })));
     const usedJina = vi.fn();
     await expect(fetchJson("https://www.reddit.com/r/a.json", { schema, jina: true, ctx: { usedJina } })).resolves.toEqual({ ok: true });
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -108,5 +107,30 @@ An old post that is too old to keep around.
       publishedAt: "2026-10-12T08:00:00.000Z",
     });
     expect(items[1].title).not.toContain("pbs.twimg.com");
+  });
+});
+
+describe("Reddit fallback", () => {
+  it("reads the Arctic Shift archive when Reddit blocks both us and Jina", async () => {
+    const post = {
+      id: "abc",
+      title: "New MCP server for agents",
+      url: null,
+      permalink: "/r/LocalLLaMA/comments/abc/x/",
+      author: "a",
+      subreddit: "LocalLLaMA",
+      score: 12,
+      num_comments: 3,
+      created_utc: 1_791_800_000,
+    };
+    const fetchMock = mockFetch((url) => {
+      if (url.startsWith("https://arctic-shift.photon-reddit.com/")) return Response.json({ data: [post] });
+      if (url.startsWith("https://r.jina.ai/")) return new Response("You've been blocked by network security.");
+      return new Response("blocked", { status: 403 });
+    });
+    vi.stubEnv("REDDIT_SUBREDDITS", "LocalLLaMA");
+    const items = await redditSource.fetchItems({ usedJina: vi.fn() });
+    expect(items).toMatchObject([{ id: "reddit:abc", channel: "r/LocalLLaMA", engagement: { score: 12, comments: 3 } }]);
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toContain("subreddit=LocalLLaMA");
   });
 });

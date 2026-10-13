@@ -29,16 +29,14 @@ export class JinaError extends Error {
 
 interface ReadOptions {
   /** `text` returns a page's raw body (right for JSON APIs); `markdown` renders HTML pages. */
-  format?: "text" | "markdown" | "html";
+  format?: "text" | "markdown";
   timeoutMs?: number;
   /** CSS selector to wait for before capturing, for pages that render with JavaScript. */
   waitForSelector?: string;
-  /** Extra Jina options, such as `X-Proxy` to read from a residential network. */
-  headers?: Record<string, string>;
 }
 
-export async function readWithJina(url: string, { format = "text", timeoutMs = 25_000, waitForSelector, headers: extra }: ReadOptions = {}): Promise<string> {
-  const headers: Record<string, string> = { "X-Return-Format": format, Accept: "text/plain", ...extra };
+export async function readWithJina(url: string, { format = "text", timeoutMs = 25_000, waitForSelector }: ReadOptions = {}): Promise<string> {
+  const headers: Record<string, string> = { "X-Return-Format": format, Accept: "text/plain" };
   if (waitForSelector) headers["X-Wait-For-Selector"] = waitForSelector;
   if (process.env.JINA_API_KEY) headers.Authorization = `Bearer ${process.env.JINA_API_KEY}`;
 

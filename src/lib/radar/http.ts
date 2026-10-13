@@ -54,7 +54,7 @@ export async function fetchJson<T extends z.ZodType>(
 }
 
 /** Errors that a different network origin can get around: blocks, rate limits, bad keys, unreachable hosts. */
-export function isBlocked(err: unknown): boolean {
+function isBlocked(err: unknown): boolean {
   if (err instanceof HttpError) return [401, 403, 429].includes(err.status);
   return err instanceof TypeError;
 }
