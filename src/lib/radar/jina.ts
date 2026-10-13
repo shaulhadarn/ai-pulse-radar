@@ -41,7 +41,11 @@ export async function readWithJina(url: string, { format = "text", timeoutMs = 2
   if (process.env.JINA_API_KEY) headers.Authorization = `Bearer ${process.env.JINA_API_KEY}`;
 
   const res = await fetch(`https://r.jina.ai/${url}`, { headers, signal: AbortSignal.timeout(timeoutMs) });
-  if (!res.ok) throw new JinaError(`Jina Reader HTTP ${res.status} for ${new URL(url).host}`);
+  if (!res.ok) {
+    // Jina explains blocks and quota errors in the body, so surface the start of it.
+    const detail = (await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160);
+    throw new JinaError(`Jina Reader HTTP ${res.status} for ${new URL(url).host}${detail ? `: ${detail}` : ""}`);
+  }
   return res.text();
 }
 
