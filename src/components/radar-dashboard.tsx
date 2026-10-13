@@ -107,7 +107,9 @@ export function RadarDashboard({ snapshot }: { snapshot: RadarSnapshot }) {
                     />
                     {s.label}
                   </span>
-                  <span className="font-mono text-xs text-muted">{s.ok ? `${s.count} ${s.count === 1 ? "item" : "items"}` : s.enabled ? "error" : "off"}</span>
+                  <span className="font-mono text-xs text-muted">
+                    {s.ok && s.viaJina && <span className="mr-1.5 rounded bg-surface-2 px-1 py-0.5 text-[10px]" title="Fetched through Jina Reader">Jina</span>}
+                    {s.ok ? `${s.count} ${s.count === 1 ? "item" : "items"}` : s.enabled ? "error" : "off"}</span>
                 </div>
                 {!s.ok && <p className="pl-4 text-xs text-muted">{s.enabled ? s.error : s.setupHint}</p>}
               </li>

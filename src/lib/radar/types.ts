@@ -28,6 +28,11 @@ export interface RadarItem extends RawItem {
   rank: number;
 }
 
+export interface FetchContext {
+  /** Called when any of the adapter's data came through Jina Reader. */
+  usedJina(): void;
+}
+
 export interface SourceAdapter {
   id: SourceId;
   label: string;
@@ -35,7 +40,7 @@ export interface SourceAdapter {
   isEnabled(): boolean;
   /** Short hint shown in the UI when the source is disabled. */
   setupHint?: string;
-  fetchItems(): Promise<RawItem[]>;
+  fetchItems(ctx: FetchContext): Promise<RawItem[]>;
 }
 
 export interface SourceStatus {
@@ -46,6 +51,8 @@ export interface SourceStatus {
   count: number;
   error?: string;
   setupHint?: string;
+  /** True when this source's data came through Jina Reader rather than a direct API call. */
+  viaJina?: boolean;
 }
 
 export interface TrendStat {

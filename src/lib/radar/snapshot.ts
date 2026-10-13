@@ -11,9 +11,10 @@ export async function buildSnapshot(adapters: SourceAdapter[], now = new Date())
       if (!adapter.isEnabled()) {
         return { status: { ...base, enabled: false, ok: false, count: 0 }, items: [] };
       }
+      let viaJina = false;
       try {
-        const items = await adapter.fetchItems();
-        return { status: { ...base, enabled: true, ok: true, count: items.length }, items };
+        const items = await adapter.fetchItems({ usedJina: () => (viaJina = true) });
+        return { status: { ...base, enabled: true, ok: true, count: items.length, viaJina }, items };
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         console.warn(`[radar] ${adapter.id} failed:`, error);

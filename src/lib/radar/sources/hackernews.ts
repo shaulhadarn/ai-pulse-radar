@@ -50,7 +50,7 @@ export const hackerNewsSource: SourceAdapter = {
   id: "hackernews",
   label: "Hacker News",
   isEnabled: () => true,
-  async fetchItems() {
+  async fetchItems(ctx) {
     const since = Math.floor(hoursAgo(LOOKBACK_HOURS).getTime() / 1000);
     const params = new URLSearchParams({
       tags: "story",
@@ -59,6 +59,8 @@ export const hackerNewsSource: SourceAdapter = {
     });
     const data = await fetchJson(`https://hn.algolia.com/api/v1/search_by_date?${params}`, {
       schema: hnResponseSchema,
+      jina: true,
+      ctx,
     });
     return parseHackerNews(data);
   },

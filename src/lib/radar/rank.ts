@@ -4,6 +4,8 @@ import type { RadarItem, RawItem, SourceId, TechniqueId, TrendStat } from "./typ
 /** Hours for an item's freshness weight to halve. */
 const HALF_LIFE_HOURS = 24;
 
+const NEUTRAL_ENGAGEMENT = 0.5;
+
 const WEIGHTS = { engagement: 0.6, freshness: 0.3, specificity: 0.1 };
 
 /**
@@ -20,8 +22,9 @@ export function rankItems(raw: RawItem[], now: Date): RadarItem[] {
   return raw
     .map((item) => {
       const techniques = classify(`${item.title} ${item.summary ?? ""}`);
-      const peak = peakBySource.get(item.source) || 1;
-      const engagement = Math.log1p(engagementOf(item)) / Math.log1p(peak);
+      const peak = peakBySource.get(item.source) ?? 0;
+      // Sources read without counts (X through Jina) get a neutral score instead of zero.
+      const engagement = peak === 0 ? NEUTRAL_ENGAGEMENT : Math.log1p(engagementOf(item)) / Math.log1p(peak);
       const ageHours = Math.max(0, (now.getTime() - Date.parse(item.publishedAt)) / 3_600_000);
       const freshness = Math.pow(0.5, ageHours / HALF_LIFE_HOURS);
       const specificity = Math.min(techniques.length, 3) / 3;

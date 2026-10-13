@@ -78,14 +78,17 @@ export const redditSource: SourceAdapter = {
   id: "reddit",
   label: "Reddit",
   isEnabled: () => true,
-  setupHint: "If Reddit blocks anonymous requests, set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET.",
-  async fetchItems() {
+  setupHint: "Reddit blocks many cloud hosts. Jina Reader is used as a fallback, or set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET.",
+  async fetchItems(ctx) {
     const token = await getAppToken();
     const base = token ? "https://oauth.reddit.com" : "https://www.reddit.com";
     const path = `/r/${subreddits().join("+")}/top${token ? "" : ".json"}?t=day&limit=100&raw_json=1`;
     const listing = await fetchJson(base + path, {
       schema: redditListingSchema,
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      // The public JSON endpoint is what Jina can read; OAuth requests need their header.
+      jina: !token,
+      ctx,
     });
     return parseReddit(listing);
   },
