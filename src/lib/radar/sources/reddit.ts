@@ -133,15 +133,13 @@ async function fetchViaJinaRoutes(query: string, ctx: FetchContext): Promise<Raw
     // Jina can route a read through a proxy, which Reddit may not block.
     { name: "proxy", load: json("www.reddit.com", { "X-Proxy": "auto" }) },
     { name: "api", load: json("api.reddit.com") },
-    {
-      name: "rss",
+    ...(["markdown", "text"] as const).map((format) => ({
+      name: `rss-${format}`,
       load: async () => {
-        const xml = await readWithJina(`https://www.reddit.com${query.replace("/top?", "/top/.rss?")}`, { format: "html" });
-        const items = parseRedditFeed(xml);
-        if (items.length === 0) throw new Error(`feed had no entries: ${xml.slice(Math.max(0, xml.search(/<entry/i)), Math.max(0, xml.search(/<entry/i)) + 900).replace(/\s+/g, " ")}`);
-        return items;
+        const out = await readWithJina(`https://www.reddit.com${query.replace("/top?", "/top/.rss?")}`, { format });
+        throw new Error(`DEBUG ${out.length}: ${out.slice(0, 1200).replace(/\s+/g, " ")}`);
       },
-    },
+    })),
   ];
   const errors: string[] = [];
   for (const route of routes) {
@@ -150,7 +148,7 @@ async function fetchViaJinaRoutes(query: string, ctx: FetchContext): Promise<Raw
       ctx.usedJina();
       return items;
     } catch (err) {
-      errors.push(`${route.name}: ${(err as Error).message.slice(0, route.name === "rss" ? 1000 : 90)}`);
+      errors.push(`${route.name}: ${(err as Error).message.slice(0, route.name.startsWith("rss") ? 1300 : 90)}`);
     }
   }
   throw new Error(`Jina could not read Reddit (${errors.join(" | ")})`);
