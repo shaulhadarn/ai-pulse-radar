@@ -19,11 +19,12 @@ describe("buildOutlook", () => {
   const insights = buildInsights(
     snapshot([
       // Agents: big but old news.
-      ...Array.from({ length: 20 }, (_, i) => raw(`a${i}`, `New agent framework release ${i}`, "github", 30 + i, 50)),
+      ...Array.from({ length: 40 }, (_, i) => raw(`a${i}`, `New agent framework release ${i}`, i % 2 ? "github" : "hackernews", 30 + i, 300)),
       // Filler so no single small technique dominates the heat.
       ...["RAG pipeline with reranking", "MCP server for Postgres", "LoRA fine-tuning recipe", "Quantization for faster inference", "Evals for prompt changes"].flatMap((title, i) => [
         raw(`f${i}a`, title, "hackernews", 20 + i, 40),
         raw(`f${i}b`, title, "reddit", 26 + i, 40),
+        raw(`f${i}c`, title, "github", 40 + i, 40),
       ]),
       // Agent loops: small, fresh and spreading.
       raw("l1", "Running an agent loop until tests pass", "hackernews", 1, 300),

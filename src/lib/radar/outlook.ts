@@ -39,19 +39,22 @@ export interface Outlook {
 const UPCOMING_COUNT = 4;
 /** Above this share of today's heat a technique is already mainstream, not upcoming. */
 const MAINSTREAM_SHARE = 20;
+/** Fewer posts than this and one lucky post can top the list. */
+const MIN_POSTS = 3;
 const HOUR = 3_600_000;
 
 export function buildOutlook(insights: Insights): Outlook {
   const now = Date.parse(insights.generatedAt);
   const scored = insights.techniques
-    .filter((t) => t.mentions >= 2)
+    .filter((t) => t.mentions >= MIN_POSTS)
     .map((t) => {
       const breakout = breakoutScore(t);
       return { insight: t, breakout, verdict: verdictOf(t, breakout), reasons: reasonsFor(t) };
     });
 
   const upcoming = scored
-    .filter((s) => s.insight.share < MAINSTREAM_SHARE)
+    // Hot techniques are already big on several platforms: they belong in "adopt", not the next wave.
+    .filter((s) => s.insight.share < MAINSTREAM_SHARE && s.insight.momentum !== "hot")
     .toSorted((a, b) => b.breakout - a.breakout)
     .slice(0, UPCOMING_COUNT);
   const nextWave = new Set(upcoming.map((u) => u.insight.technique));
