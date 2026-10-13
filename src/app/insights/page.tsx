@@ -50,7 +50,7 @@ async function InsightsContent() {
           <PulseStat label="Sources live" value={`${pulse.liveSources} / ${snapshot.sources.length}`} detail="X, HN, Reddit, GitHub" />
           <PulseStat
             label="Fastest rising"
-            value={pulse.fastest?.label ?? "Not enough data"}
+            value={pulse.fastest?.label ?? "Nothing yet"}
             detail={pulse.fastest?.velocity ? `${pulse.fastest.velocity}× the radar's pace` : undefined}
           />
         </div>

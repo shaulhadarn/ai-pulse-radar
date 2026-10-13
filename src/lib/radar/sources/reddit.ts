@@ -89,14 +89,16 @@ const ARCHIVE_PER_SUBREDDIT = 10;
  */
 async function fetchFromArcticShift(now = Date.now()): Promise<RawItem[]> {
   const after = Math.floor(now / 1000) - 24 * 3600;
-  const lists = await Promise.all(
-    subreddits().map((sub) =>
-      fetchJson(`https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=${encodeURIComponent(sub)}&after=${after}&limit=100&sort=desc`, {
-        schema: arcticSchema,
-        timeoutMs: 15_000,
-      }),
-    ),
-  );
+  const fetchSub = (sub: string) =>
+    fetchJson(`https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=${encodeURIComponent(sub)}&after=${after}&limit=100&sort=desc`, {
+      schema: arcticSchema,
+      timeoutMs: 15_000,
+    });
+  // The archive intermittently answers 422 when a query runs slow, so retry once and
+  // let one bad subreddit drop out instead of taking the whole source down.
+  const results = await Promise.allSettled(subreddits().map((sub) => fetchSub(sub).catch(() => fetchSub(sub))));
+  const lists = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+  if (lists.length === 0) throw (results[0] as PromiseRejectedResult).reason;
   return lists.flatMap((list) => {
     const live = list.data
       .filter((post) => !post.removed_by_category && !/^\[ ?(removed|deleted)/i.test(post.title) && post.selftext !== "[removed]")

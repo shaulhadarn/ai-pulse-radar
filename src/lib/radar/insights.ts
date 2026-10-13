@@ -134,7 +134,8 @@ export function buildInsights(snapshot: RadarSnapshot): Insights {
   scoreOpportunities(techniques);
 
   const withVelocity = techniques.filter((t) => t.velocity !== null && t.mentions >= MIN_POSTS_FOR_VELOCITY);
-  const fastest = withVelocity.toSorted((a, b) => (b.velocity ?? 0) - (a.velocity ?? 0))[0] ?? null;
+  // Only something actually outpacing the radar counts as rising.
+  const fastest = withVelocity.filter((t) => (t.velocity ?? 0) > 1).toSorted((a, b) => (b.velocity ?? 0) - (a.velocity ?? 0))[0] ?? null;
 
   return {
     generatedAt: snapshot.generatedAt,

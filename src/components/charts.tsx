@@ -85,7 +85,13 @@ export function SourceMix({ mix }: { mix: Record<SourceId, number> }) {
  */
 export function MomentumMap({ techniques }: { techniques: TechniqueInsight[] }) {
   const points = techniques.filter((t) => t.velocity !== null && t.velocity > 0 && t.share > 0);
-  if (points.length < 3) return null;
+  if (points.length < 3) {
+    return (
+      <p className="rounded-2xl bg-surface-2 p-6 text-center text-sm text-muted">
+        Too few posts from the last 48 hours on this scan to measure acceleration. The map fills in as fresh posts arrive.
+      </p>
+    );
+  }
   const W = 720;
   const H = 380;
   const pad = { l: 52, r: 20, t: 20, b: 36 };
