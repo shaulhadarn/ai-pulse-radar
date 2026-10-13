@@ -138,7 +138,7 @@ async function fetchViaJinaRoutes(query: string, ctx: FetchContext): Promise<Raw
       load: async () => {
         const xml = await readWithJina(`https://www.reddit.com${query.replace("/top?", "/top/.rss?")}`, { format: "html" });
         const items = parseRedditFeed(xml);
-        if (items.length === 0) throw new Error(`feed had no entries: ${xml.replace(/\s+/g, " ").slice(0, 120)}`);
+        if (items.length === 0) throw new Error(`feed had no entries: ${xml.slice(Math.max(0, xml.search(/<entry/i)), Math.max(0, xml.search(/<entry/i)) + 900).replace(/\s+/g, " ")}`);
         return items;
       },
     },
@@ -150,7 +150,7 @@ async function fetchViaJinaRoutes(query: string, ctx: FetchContext): Promise<Raw
       ctx.usedJina();
       return items;
     } catch (err) {
-      errors.push(`${route.name}: ${(err as Error).message.slice(0, 90)}`);
+      errors.push(`${route.name}: ${(err as Error).message.slice(0, route.name === "rss" ? 1000 : 90)}`);
     }
   }
   throw new Error(`Jina could not read Reddit (${errors.join(" | ")})`);
