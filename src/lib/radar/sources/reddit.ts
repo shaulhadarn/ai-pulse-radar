@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { fetchJson } from "../http";
-import type { RawItem, SourceAdapter } from "../types";
+import { fetchJson, isBlocked } from "../http";
+import { extractJson, jinaMode, readWithJina } from "../jina";
+import type { FetchContext, RawItem, SourceAdapter } from "../types";
 
 export const DEFAULT_SUBREDDITS = ["LocalLLaMA", "MachineLearning", "ClaudeAI", "OpenAI", "singularity", "ChatGPTCoding", "AI_Agents"];
 
@@ -50,7 +51,9 @@ export function parseReddit(listing: z.infer<typeof redditListingSchema>): RawIt
 }
 
 function subreddits(): string[] {
-  const fromEnv = process.env.REDDIT_SUBREDDITS?.split(",").map((s) => s.trim()).filter(Boolean);
+  const fromEnv = process.env.REDDIT_SUBREDDITS?.split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   return fromEnv?.length ? fromEnv : DEFAULT_SUBREDDITS;
 }
 
@@ -74,6 +77,92 @@ async function getAppToken(): Promise<string | undefined> {
   return access_token;
 }
 
+/** Atom feed entries (`/top/.rss`). Feeds carry no vote counts, so ranking treats them as neutral. */
+export function parseRedditFeed(xml: string): RawItem[] {
+  const decode = (s: string) =>
+    s
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, "&");
+  return [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].flatMap(([, entry]): RawItem[] => {
+    const tag = (name: string) => entry.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`))?.[1];
+    const id = tag("id")?.trim().replace(/^t3_/, "");
+    const title = tag("title");
+    const discussionUrl = entry.match(/<link[^>]*href="([^"]+)"/)?.[1];
+    const published = tag("published") ?? tag("updated");
+    if (!id || !title || !discussionUrl || !published) return [];
+    const html = decode(tag("content") ?? "");
+    // Link posts put the target behind a "[link]" anchor; self posts point at the thread.
+    const linked = html.match(/<a href="([^"]+)">\[link\]<\/a>/)?.[1];
+    const text = decode(html.replace(/<[^>]+>/g, " "))
+      .replace(/submitted by[\s\S]*$/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    const subreddit = entry.match(/<category[^>]*term="([^"]+)"/)?.[1];
+    return [
+      {
+        id: `reddit:${id}`,
+        source: "reddit",
+        title: decode(title).trim(),
+        url: linked ?? decode(discussionUrl),
+        discussionUrl: decode(discussionUrl),
+        author: tag("name")
+          ?.trim()
+          .replace(/^\/u\//, ""),
+        channel: subreddit ? `r/${subreddit}` : undefined,
+        summary: text ? text.slice(0, 280) : undefined,
+        publishedAt: new Date(published.trim()).toISOString(),
+        engagement: { score: 0 },
+      },
+    ];
+  });
+}
+
+/**
+ * Reddit blocks Vercel and also Jina's own servers on www.reddit.com, so when
+ * the direct call is refused we try other Reddit hosts and the RSS feed through Jina.
+ */
+async function fetchViaJinaRoutes(query: string, ctx: FetchContext): Promise<RawItem[]> {
+  const routes: { name: string; load: () => Promise<RawItem[]> }[] = [
+    {
+      name: "www",
+      load: async () =>
+        parseReddit(redditListingSchema.parse(extractJson(await readWithJina(`https://www.reddit.com${query.replace("/top?", "/top.json?")}`)))),
+    },
+    {
+      name: "old",
+      load: async () =>
+        parseReddit(redditListingSchema.parse(extractJson(await readWithJina(`https://old.reddit.com${query.replace("/top?", "/top.json?")}`)))),
+    },
+    {
+      name: "api",
+      load: async () => parseReddit(redditListingSchema.parse(extractJson(await readWithJina(`https://api.reddit.com${query}`)))),
+    },
+    {
+      name: "rss",
+      load: async () => {
+        const items = parseRedditFeed(await readWithJina(`https://www.reddit.com${query.replace("/top?", "/top/.rss?")}`));
+        if (items.length === 0) throw new Error("feed had no entries");
+        return items;
+      },
+    },
+  ];
+  const errors: string[] = [];
+  for (const route of routes) {
+    try {
+      const items = await route.load();
+      ctx.usedJina();
+      return items;
+    } catch (err) {
+      errors.push(`${route.name}: ${(err as Error).message.slice(0, 90)}`);
+    }
+  }
+  throw new Error(`Jina could not read Reddit (${errors.join(" | ")})`);
+}
+
 export const redditSource: SourceAdapter = {
   id: "reddit",
   label: "Reddit",
@@ -81,15 +170,22 @@ export const redditSource: SourceAdapter = {
   setupHint: "Reddit blocks many cloud hosts. Jina Reader is used as a fallback, or set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET.",
   async fetchItems(ctx) {
     const token = await getAppToken();
-    const base = token ? "https://oauth.reddit.com" : "https://www.reddit.com";
-    const path = `/r/${subreddits().join("+")}/top${token ? "" : ".json"}?t=day&limit=100&raw_json=1`;
-    const listing = await fetchJson(base + path, {
-      schema: redditListingSchema,
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      // The public JSON endpoint is what Jina can read; OAuth requests need their header.
-      jina: !token,
-      ctx,
-    });
-    return parseReddit(listing);
+    const query = `/r/${subreddits().join("+")}/top?t=day&limit=100&raw_json=1`;
+    if (token) {
+      const listing = await fetchJson(`https://oauth.reddit.com${query}`, {
+        schema: redditListingSchema,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return parseReddit(listing);
+    }
+
+    const mode = jinaMode();
+    if (mode === "always") return fetchViaJinaRoutes(query, ctx);
+    try {
+      return parseReddit(await fetchJson(`https://www.reddit.com${query.replace("/top?", "/top.json?")}`, { schema: redditListingSchema }));
+    } catch (err) {
+      if (mode === "off" || !isBlocked(err)) throw err;
+      return fetchViaJinaRoutes(query, ctx);
+    }
   },
 };
