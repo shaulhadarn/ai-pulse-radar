@@ -1,0 +1,9 @@
+{
+  "data": {
+    "children": [
+      { "data": { "id": "s1", "title": "Weekly thread", "url": "https://www.reddit.com/r/LocalLLaMA/comments/s1/weekly/", "permalink": "/r/LocalLLaMA/comments/s1/weekly/", "author": "mod", "subreddit": "LocalLLaMA", "score": 50, "num_comments": 10, "created_utc": 1792060000, "stickied": true } },
+      { "data": { "id": "p1", "title": "Qwen3-Next 80B GGUF is out and it's fast", "url": "https://huggingface.co/Qwen/Qwen3-Next", "permalink": "/r/LocalLLaMA/comments/p1/qwen3/", "author": "llmfan", "subreddit": "LocalLLaMA", "score": 1800, "num_comments": 420, "created_utc": 1792060000 } },
+      { "data": { "id": "p2", "title": "My RAG setup after a year in production", "url": "https://www.reddit.com/r/MachineLearning/comments/p2/my_rag/", "permalink": "/r/MachineLearning/comments/p2/my_rag/", "author": "mle", "subreddit": "MachineLearning", "score": 600, "num_comments": 95, "created_utc": 1792055000, "selftext": "Hybrid search plus a reranker beat everything else." } }
+    ]
+  }
+}

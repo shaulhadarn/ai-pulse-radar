@@ -1,0 +1,7 @@
+{
+  "hits": [
+    { "objectID": "1001", "title": "Everything I learned building MCP servers", "url": "https://simonwillison.net/2026/Oct/12/mcp/", "author": "simonw", "points": 412, "num_comments": 188, "created_at_i": 1792060000 },
+    { "objectID": "1002", "title": "The history of the Boeing 747", "url": "https://example.com/747", "author": "pilot", "points": 300, "num_comments": 90, "created_at_i": 1792060000 },
+    { "objectID": "1003", "title": "Ask HN: How are you evaluating your LLM apps?", "url": null, "author": "dev", "points": 120, "num_comments": 140, "created_at_i": 1792050000, "story_text": "We use LLM-as-a-judge &amp; golden sets." }
+  ]
+}

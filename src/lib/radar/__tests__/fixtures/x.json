@@ -1,0 +1,6 @@
+{
+  "data": [
+    { "id": "777", "text": "New post on context engineering for agents https://t.co/abc123", "author_id": "u1", "created_at": "2026-10-13T08:00:00.000Z", "public_metrics": { "like_count": 1000, "retweet_count": 200, "reply_count": 80, "quote_count": 50 } }
+  ],
+  "includes": { "users": [{ "id": "u1", "username": "karpathy" }] }
+}

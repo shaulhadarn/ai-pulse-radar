@@ -1,0 +1,5 @@
+{
+  "items": [
+    { "id": 42, "full_name": "acme/agent-kit", "html_url": "https://github.com/acme/agent-kit", "description": "Composable agents with tool use", "stargazers_count": 1530, "forks_count": 77, "language": "TypeScript", "created_at": "2026-10-08T09:00:00Z", "owner": { "login": "acme" }, "topics": ["ai-agents", "mcp"] }
+  ]
+}
