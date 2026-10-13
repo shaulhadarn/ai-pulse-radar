@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildInsights, momentumOf } from "../insights";
+import { buildInsights, momentumOf, velocityOf } from "../insights";
 import { computeTrends, rankItems } from "../rank";
 import type { RadarSnapshot, RawItem } from "../types";
 
@@ -30,6 +30,12 @@ describe("buildInsights", () => {
     expect(loops?.play.apply).toMatch(/exit condition/);
     expect(insights.tools.map((t) => t.name)).toEqual(expect.arrayContaining(["Claude Code", "Qwen"]));
     expect(insights.headline).toContain("Agent loops");
+    expect(loops?.sourceMix).toEqual({ hackernews: 1, reddit: 1, x: 1, github: 0 });
+    expect(loops?.activity.at(-1)).toBe(3);
+    expect(loops?.related.map((r) => r.technique)).toContain("coding-agents");
+    // Talked about everywhere, no repos yet: the strongest opportunity.
+    expect(insights.opportunities[0].technique).toBe("agent-loops");
+    expect(insights.pulse).toMatchObject({ totalSignals: 4, last24h: 3 });
   });
 
   it("handles an empty scan", () => {
@@ -43,5 +49,13 @@ describe("momentumOf", () => {
     expect(momentumOf({ share: 4, avgRank: 55, freshShare: 70, mentions: 6, sources: 1 })).toBe("rising");
     expect(momentumOf({ share: 2, avgRank: 60, freshShare: 10, mentions: 2, sources: 1 })).toBe("emerging");
     expect(momentumOf({ share: 3, avgRank: 30, freshShare: 10, mentions: 9, sources: 2 })).toBe("steady");
+  });
+});
+
+describe("velocityOf", () => {
+  it("compares the last 12 hours with the 36 before", () => {
+    expect(velocityOf([1, 2])).toBeNull();
+    expect(velocityOf([1, 2, 3, 20, 30, 40])).toBeCloseTo((3 / 12) / (3 / 36));
+    expect(velocityOf([20, 25, 30, 40])).toBe(0);
   });
 });
