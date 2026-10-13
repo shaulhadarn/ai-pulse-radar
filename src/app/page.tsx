@@ -1,19 +1,24 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { RadarGlyph } from "@/components/insight-ui";
+import { NextWave } from "@/components/next-wave";
 import { RadarDashboard } from "@/components/radar-dashboard";
 import { getRadarSnapshot } from "@/lib/radar/get-radar";
+import { buildInsights } from "@/lib/radar/insights";
+import { buildOutlook } from "@/lib/radar/outlook";
 
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
-      <header className="mb-8 flex flex-col gap-3">
+      <header className="relative mb-8 flex flex-col gap-3">
+        <RadarGlyph className="pointer-events-none absolute -right-24 -top-24 hidden size-80 opacity-60 md:block" />
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent">Live radar</p>
-        <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
-          What builders are shipping with AI right now
+        <h1 className="relative max-w-3xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
+          Spot the next AI wave before everyone else
         </h1>
-        <p className="max-w-2xl text-muted text-pretty">
-          Ranked signals from X, Hacker News, Reddit and GitHub, grouped by technique so you can see which tools and
-          methods are gaining momentum.{" "}
+        <p className="relative max-w-2xl text-muted text-pretty">
+          Ranked signals from X, Hacker News, Reddit and GitHub, scored for momentum so you can see which technologies are about to matter and
+          what to do about them this week.{" "}
           <Link href="/insights" className="font-medium text-accent underline-offset-4 hover:underline">
             Read today&apos;s insights →
           </Link>
@@ -28,7 +33,21 @@ export default function Home() {
 
 async function Radar() {
   const snapshot = await getRadarSnapshot();
-  return <RadarDashboard snapshot={snapshot} />;
+  const outlook = buildOutlook(buildInsights(snapshot));
+  return (
+    <div className="flex flex-col gap-10">
+      <NextWave outlook={outlook} now={Date.parse(snapshot.generatedAt)} />
+      <section className="flex flex-col gap-4" aria-labelledby="all-signals">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-accent">Live feed</p>
+          <h2 id="all-signals" className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+            Every signal, ranked
+          </h2>
+        </div>
+        <RadarDashboard snapshot={snapshot} meta={outlook.meta} />
+      </section>
+    </div>
+  );
 }
 
 function RadarSkeleton() {
