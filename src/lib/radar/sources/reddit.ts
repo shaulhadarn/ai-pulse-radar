@@ -126,26 +126,19 @@ export function parseRedditFeed(xml: string): RawItem[] {
  * the direct call is refused we try other Reddit hosts and the RSS feed through Jina.
  */
 async function fetchViaJinaRoutes(query: string, ctx: FetchContext): Promise<RawItem[]> {
+  const json = (host: string, headers?: Record<string, string>) => async () =>
+    parseReddit(redditListingSchema.parse(extractJson(await readWithJina(`https://${host}${query.replace("/top?", "/top.json?")}`, { headers }))));
   const routes: { name: string; load: () => Promise<RawItem[]> }[] = [
-    {
-      name: "www",
-      load: async () =>
-        parseReddit(redditListingSchema.parse(extractJson(await readWithJina(`https://www.reddit.com${query.replace("/top?", "/top.json?")}`)))),
-    },
-    {
-      name: "old",
-      load: async () =>
-        parseReddit(redditListingSchema.parse(extractJson(await readWithJina(`https://old.reddit.com${query.replace("/top?", "/top.json?")}`)))),
-    },
-    {
-      name: "api",
-      load: async () => parseReddit(redditListingSchema.parse(extractJson(await readWithJina(`https://api.reddit.com${query}`)))),
-    },
+    { name: "www", load: json("www.reddit.com") },
+    // Jina can route a read through a proxy, which Reddit may not block.
+    { name: "proxy", load: json("www.reddit.com", { "X-Proxy": "auto" }) },
+    { name: "api", load: json("api.reddit.com") },
     {
       name: "rss",
       load: async () => {
-        const items = parseRedditFeed(await readWithJina(`https://www.reddit.com${query.replace("/top?", "/top/.rss?")}`));
-        if (items.length === 0) throw new Error("feed had no entries");
+        const xml = await readWithJina(`https://www.reddit.com${query.replace("/top?", "/top/.rss?")}`, { format: "html" });
+        const items = parseRedditFeed(xml);
+        if (items.length === 0) throw new Error(`feed had no entries: ${xml.replace(/\s+/g, " ").slice(0, 120)}`);
         return items;
       },
     },
